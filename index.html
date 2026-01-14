@@ -5,43 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NP Attendance Pro</title>
     
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script> <!-- CSV Parser -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700&family=Poppins:wght@400;600;700&family=Mountains+of+Christmas:wght@700&family=Creepster&family=Indie+Flower&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 🎨 SYSTEM VARIABLES --- */
         :root {
             --bg-gradient: radial-gradient(circle at top, #b31217, #8a0d11);
             --accent-color: #d42426;
             --text-color: #f8fafc;
             --font-family: 'Kantumruy Pro', sans-serif;
-            
-            /* Glass Card */
             --card-bg: rgba(255, 255, 255, 0.15);
             --card-border: 1px solid rgba(255, 255, 255, 0.3);
             --card-blur: 20px;
             --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             --card-bg-image: none; 
-
-            /* Inputs */
             --input-bg: rgba(255, 255, 255, 0.9);
             --input-text: #0f172a;
         }
 
         body { 
-            font-family: var(--font-family); 
-            background: var(--bg-gradient);
-            min-height: 100vh;
-            color: var(--text-color);
-            padding-bottom: 120px;
-            overflow-x: hidden;
-            transition: background 1s ease;
-            position: relative;
+            font-family: var(--font-family); background: var(--bg-gradient);
+            min-height: 100vh; color: var(--text-color); padding-bottom: 120px;
+            overflow-x: hidden; transition: background 1s ease; position: relative;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* --- ⚡ LAYER SYSTEM ⚡ --- */
         #app-container { position: relative; z-index: 10; }
         #effect-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
         #sprite-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; overflow: hidden; }
@@ -52,7 +43,6 @@
         .top-nav > * { pointer-events: auto; } 
         #settingsModal, #historyModal, #confirmModal { z-index: 100; }
 
-        /* --- 💎 UI STYLES 💎 --- */
         .glass-card {
             background-image: var(--card-bg-image); background-size: cover; background-position: center;
             background-color: var(--card-bg); backdrop-filter: blur(var(--card-blur)); -webkit-backdrop-filter: blur(var(--card-blur));
@@ -79,16 +69,15 @@
         .info { color: #0284c7; } .radio-hidden:checked + .radio-card.info { border-color: #0284c7; color: #0284c7; }
         .warning { color: #d97706; } .radio-hidden:checked + .radio-card.warning { border-color: #d97706; color: #d97706; }
 
-        /* --- 🎞️ ANIMATIONS 🎞️ --- */
         .sprite { position: absolute; will-change: transform; pointer-events: none; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
         
-        .fish-anim { animation: fishWiggle 1s infinite alternate ease-in-out; }
+        .fish-anim { animation: fishWiggle 0.6s infinite alternate ease-in-out; }
         @keyframes fishWiggle { from { transform: rotate(5deg); } to { transform: rotate(-5deg); } }
         
-        .jelly-anim { animation: jellyPulse 1.5s infinite alternate ease-in-out; }
-        @keyframes jellyPulse { 0% { transform: scaleY(1); } 100% { transform: scaleY(0.9); } }
+        .jelly-anim { animation: jellyPulse 1s infinite alternate ease-in-out; }
+        @keyframes jellyPulse { 0% { transform: scaleY(1); } 100% { transform: scaleY(0.85); } }
 
-        .flower-anim { animation: flowerSpin 6s infinite linear; }
+        .flower-anim { animation: flowerSpin 4s infinite linear; }
         @keyframes flowerSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .gallery-item { position: relative; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer; transition: 0.2s; }
@@ -118,7 +107,6 @@
             <button onclick="changeTheme(1)" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white active:scale-90"><i class="fas fa-chevron-right"></i></button>
         </div>
         
-        <!-- Right Buttons -->
         <div class="flex gap-2 pointer-events-auto">
             <button onclick="toggleHistory()" class="w-12 h-12 bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg active:rotate-90 transition duration-300"><i class="fas fa-history text-xl"></i></button>
             <button onclick="toggleSettings()" class="w-12 h-12 bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg active:rotate-90 transition duration-300"><i class="fas fa-cog text-xl"></i></button>
@@ -308,19 +296,16 @@
 
     <!-- 📜 JS LOGIC 📜 -->
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyiHJh5jlU9P_4qJL2HYRbHKHB-qGzCvt4MBhJV_2m2sZJ08-8S1BGv52kLdA9IOX4b/exec"; // 🛑 REPLACE
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwskTYy7rYnbk1PglFJZH70zU-wNNyQ15cz1xH_iXmXN4cr5OYbCnpit04RzOwvbgwG/exec"; // 🛑 REPLACE
 
         // --- 🎨 RELIABLE 3D ASSETS (GitHub Raw) ---
         const IMAGES = {
-            bat: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Bat.png",
             fish1: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Tropical%20Fish.png",
             fish2: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Blowfish.png",
             fish3: "https://media.githubusercontent.com/media/microsoft/fluentui-emoji-animated/refs/heads/main/assets/Jellyfish/animated/jellyfish_animated.png",
             jelly: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Octopus.png",
             turtle: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Turtle.png",
             crab: "https://media.githubusercontent.com/media/microsoft/fluentui-emoji-animated/refs/heads/main/assets/Fish/animated/fish_animated.png",
-            leaf1: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Natural/Maple%20Leaf.png",
-            leaf2: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Natural/Fallen%20Leaf.png",
             flower: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Cherry%20Blossom.png"
         };
 
@@ -409,7 +394,7 @@
             clearInterval(spriteInterval);
             document.getElementById('sprite-container').innerHTML = ''; 
             
-            if (!['bat', 'leaf', 'flower', 'sea', 'snow'].includes(type)) return;
+            if (!['flower', 'sea'].includes(type)) return;
 
             const spawn = () => {
                 const el = document.createElement('div');
@@ -419,58 +404,38 @@
                 const img = document.createElement('img');
                 img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain';
 
-                if (type === 'bat') {
-                    img.src = IMAGES.bat;
-                    img.className = 'bat-anim';
-                    el.appendChild(img);
-                    el.style.width = (Math.random() * 60 + 40) + 'px';
-                    el.style.left = '-10vw'; el.style.top = (Math.random() * 50 + 20) + 'vh';
-                    const dur = (Math.random() * 3000 + 4000) / speed;
-                    el.animate([{ transform: 'translateX(0) scale(0.6)' }, { transform: `translateX(${window.innerWidth + 100}px) translateY(${Math.random() * 200 - 100}px) scale(0.8)` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
-                } 
-                else if (type === 'sea') {
+                if (type === 'sea') {
                     const creatures = [IMAGES.fish1, IMAGES.fish2, IMAGES.fish3, IMAGES.turtle, IMAGES.crab, IMAGES.jelly];
                     const imgUrl = creatures[Math.floor(Math.random()*creatures.length)];
                     img.src = imgUrl;
-                    
-                    if(imgUrl.includes('jelly')) img.className = 'jelly-anim';
-                    else img.className = 'fish-anim';
-                    
+                    if(imgUrl.includes('Octopus')) img.className = 'jelly-anim'; else img.className = 'fish-anim';
                     el.appendChild(img);
                     el.style.width = (Math.random()*60+40)+'px';
                     el.style.top = Math.random() * 90 + 'vh';
-                    
                     const direction = Math.random() > 0.5 ? 1 : -1;
                     const startX = direction === 1 ? -100 : window.innerWidth + 100;
                     const endX = direction === 1 ? window.innerWidth + 100 : -100;
                     const scaleX = direction === 1 ? -1 : 1; 
-                    
                     el.style.left = startX + 'px';
                     const dur = (Math.random() * 8000 + 10000) / speed;
                     el.animate([{ transform: `translateX(0) scaleX(${scaleX})` }, { transform: `translateX(${endX - startX}px) scaleX(${scaleX})` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
                 }
-                else {
-                    const imgUrl = type === 'leaf' ? (Math.random() > 0.5 ? IMAGES.leaf1 : IMAGES.leaf2) : IMAGES.flower;
-                    img.src = imgUrl;
-                    img.className = 'leaf-anim';
+                else if (type === 'flower') {
+                    img.src = IMAGES.flower;
+                    img.className = 'flower-anim';
                     el.appendChild(img);
-                    
-                    el.style.width = type === 'leaf' ? (Math.random()*30+20)+'px' : '25px';
+                    el.style.width = (Math.random()*30+20)+'px';
                     el.style.left = Math.random()*100+'vw'; el.style.top = '-50px';
                     const dur = (Math.random() * 4000 + 4000) / speed;
                     el.animate([{ transform: 'translateY(0) rotate(0deg)' }, { transform: `translateY(${window.innerHeight + 100}px) rotate(360deg)` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
                 }
                 
-                if(type !== 'snow') document.getElementById('sprite-container').appendChild(el);
+                document.getElementById('sprite-container').appendChild(el);
             };
             
-            const baseInt = (type === 'bat' || type === 'sea') ? 2000 : (type === 'snow' ? 999999 : 800);
-            if(type !== 'snow') {
-                spawn();
-                spriteInterval = setInterval(spawn, baseInt / count);
-            } else {
-                spawn();
-            }
+            const baseInt = (type === 'sea') ? 2000 : 800;
+            spawn();
+            spriteInterval = setInterval(spawn, baseInt / count);
         }
 
         // --- GLOBAL WALLPAPER SYNC ---
@@ -788,4 +753,3 @@
     </script>
 </body>
 </html>
-
