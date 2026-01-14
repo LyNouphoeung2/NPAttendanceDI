@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NP Attendance Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700&family=Poppins:wght@400;600;700&family=Mountains+of+Christmas:wght@700&family=Creepster&family=Indie+Flower&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 🎨 SYSTEM VARIABLES --- */
+        :root {
+            --bg-gradient: radial-gradient(circle at top, #b31217, #8a0d11);
+            --accent-color: #d42426;
+            --text-color: #f8fafc;
+            --font-family: 'Kantumruy Pro', sans-serif;
+            
+            /* Glass Card */
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-border: 1px solid rgba(255, 255, 255, 0.3);
+            --card-blur: 20px;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --card-bg-image: none; 
+
+            /* Inputs */
+            --input-bg: rgba(255, 255, 255, 0.9);
+            --input-text: #0f172a;
+        }
+
+        body { 
+            font-family: var(--font-family); 
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-color);
+            padding-bottom: 120px;
+            overflow-x: hidden;
+            transition: background 1s ease;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- ⚡ LAYER SYSTEM ⚡ --- */
+        #app-container { position: relative; z-index: 10; }
+        #effect-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        #sprite-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; overflow: hidden; }
+        #atmosphere-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; mix-blend-mode: overlay; transition: opacity 1s, background 1s; }
+        #lightning-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 45; transition: opacity 0.05s ease-out; }
+
+        .top-nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 50; padding: 1rem; pointer-events: none; display: flex; justify-content: space-between; align-items: center; }
+        .top-nav > * { pointer-events: auto; } 
+        #settingsModal, #historyModal { z-index: 100; }
+
+        /* --- 💎 UI STYLES 💎 --- */
+        .glass-card {
+            background-image: var(--card-bg-image); background-size: cover; background-position: center;
+            background-color: var(--card-bg); backdrop-filter: blur(var(--card-blur)); -webkit-backdrop-filter: blur(var(--card-blur));
+            border: var(--card-border); border-top: 1px solid rgba(255,255,255,0.5); border-radius: 24px;
+            box-shadow: var(--card-shadow); transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .input-field {
+            width: 100%; padding: 16px; border-radius: 16px; background: var(--input-bg); color: var(--input-text);
+            border: 2px solid transparent; outline: none; font-weight: 600; transition: 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .input-field:focus { border-color: var(--accent-color); box-shadow: 0 0 0 4px rgba(255,255,255,0.3); transform: translateY(-1px); }
+        .btn-action {
+            background: var(--accent-color); color: white; border-radius: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-action:active { transform: scale(0.96); }
+        .radio-card {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px;
+            border-radius: 14px; background: rgba(255,255,255,0.9); color: #334155; height: 100%; transition: all 0.2s; border: 2px solid transparent;
+        }
+        .radio-hidden:checked + .radio-card { background: #fff; border-color: var(--accent-color); color: var(--accent-color); transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .success { color: #059669; } .radio-hidden:checked + .radio-card.success { border-color: #059669; color: #059669; }
+        .danger { color: #dc2626; } .radio-hidden:checked + .radio-card.danger { border-color: #dc2626; color: #dc2626; }
+        .info { color: #0284c7; } .radio-hidden:checked + .radio-card.info { border-color: #0284c7; color: #0284c7; }
+        .warning { color: #d97706; } .radio-hidden:checked + .radio-card.warning { border-color: #d97706; color: #d97706; }
+
+        /* --- 🎞️ ANIMATIONS 🎞️ --- */
+        .sprite { position: absolute; will-change: transform; pointer-events: none; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+        
+        .fish-anim { animation: fishWiggle 0.6s infinite alternate ease-in-out; }
+        @keyframes fishWiggle { from { transform: rotate(5deg); } to { transform: rotate(-5deg); } }
+        
+        .jelly-anim { animation: jellyPulse 1s infinite alternate ease-in-out; }
+        @keyframes jellyPulse { 0% { transform: scaleY(1); } 100% { transform: scaleY(0.85); } }
+
+        .flower-anim { animation: flowerSpin 4s infinite linear; }
+        @keyframes flowerSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Santa Float */
+        .santa-anim { animation: santaBob 1.5s infinite alternate ease-in-out; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.4)); }
+        @keyframes santaBob { 0% { transform: translateY(0) rotate(2deg); } 100% { transform: translateY(15px) rotate(-2deg); } }
+
+        .gallery-item { position: relative; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer; transition: 0.2s; }
+        .gallery-item.active { border-color: var(--accent-color); transform: scale(0.95); }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #cbd5e1; border-radius: 2px; }
+        .history-card { border-left: 4px solid var(--accent-color); }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4">
+
+    <!-- 🌌 FX SYSTEM 🌌 -->
+    <div id="atmosphere-overlay"></div>
+    <canvas id="effect-canvas"></canvas>
+    <div id="sprite-container"></div>
+    <div id="lightning-flash"></div>
+
+    <!-- 🧭 TOP NAV 🧭 -->
+    <div class="top-nav">
+        <div class="bg-black/40 backdrop-blur-xl rounded-full p-1.5 flex items-center gap-1 border border-white/10 shadow-2xl pointer-events-auto">
+            <button onclick="changeTheme(-1)" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white active:scale-90"><i class="fas fa-chevron-left"></i></button>
+            <div class="px-2 text-center min-w-[100px]" onclick="toggleSettings()">
+                <div id="topModeIcon" class="text-2xl animate-bounce">🎄</div>
+                <div id="topModeName" class="text-[9px] font-bold text-white uppercase tracking-widest mt-1">Christmas</div>
+            </div>
+            <button onclick="changeTheme(1)" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white active:scale-90"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        
+        <!-- Right Buttons -->
+        <div class="flex gap-2 pointer-events-auto">
+            <button onclick="toggleHistory()" class="w-12 h-12 bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg active:rotate-90 transition duration-300"><i class="fas fa-history text-xl"></i></button>
+            <button onclick="toggleSettings()" class="w-12 h-12 bg-black/40 backdrop-blur-xl rounded-full flex items-center justify-center text-white border border-white/10 shadow-lg active:rotate-90 transition duration-300"><i class="fas fa-cog text-xl"></i></button>
+        </div>
+    </div>
+
+    <!-- 📜 HISTORY MODAL 📜 -->
+    <div id="historyModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 transition-all">
+        <div class="bg-white/95 backdrop-blur-2xl rounded-[32px] p-6 w-full max-w-sm shadow-2xl border border-white/50 max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-black text-xl text-slate-800 flex items-center gap-2"><i class="fas fa-history text-[var(--accent-color)]"></i> ប្រវត្តិ</h3>
+                <div class="flex gap-2">
+                    <button onclick="clearHistory()" class="w-8 h-8 bg-red-100 rounded-full text-red-500 hover:bg-red-200"><i class="fas fa-trash-alt"></i></button>
+                    <button onclick="toggleHistory()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div id="historyList" class="flex-1 overflow-y-auto space-y-3 pr-1">
+                <div class="text-center text-slate-400 py-10">មិនទាន់មានប្រវត្តិ</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚙️ SETTINGS MODAL ⚙️ -->
+    <div id="settingsModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 transition-all">
+        <div class="bg-white/95 backdrop-blur-2xl rounded-[32px] p-6 w-full max-w-sm shadow-2xl border border-white/50 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-xl text-slate-800 flex items-center gap-2"><i class="fas fa-magic text-[var(--accent-color)]"></i> តុបតែង</h3>
+                <button onclick="toggleSettings()" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 hover:bg-red-50 hover:text-red-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Background for <span id="currentModeName" class="text-[var(--accent-color)]">Mode</span></label>
+                    <div class="flex gap-2">
+                        <input type="text" id="customBgUrl" oninput="handleCustomBgInput()" class="w-full pl-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[var(--accent-color)]" placeholder="Paste link រូបភាព...">
+                        <button onclick="addToGallery()" class="w-12 bg-slate-800 text-white rounded-xl flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase border-b border-slate-200 pb-2">ការកំណត់ Effect</h4>
+                    <div><div class="flex justify-between mb-1"><label class="text-[10px] font-bold text-slate-500">ល្បឿន (Speed)</label><span id="speedVal" class="float-right text-[var(--accent-color)] text-[10px] font-bold">1x</span></div><input type="range" id="fxSpeed" min="0.5" max="3" step="0.5" value="1" oninput="updateVisuals()"></div>
+                    <div><div class="flex justify-between mb-1"><label class="text-[10px] font-bold text-slate-500">ចំនួន (Count)</label><span id="countVal" class="float-right text-[var(--accent-color)] text-[10px] font-bold">1x</span></div><input type="range" id="fxCount" min="0.5" max="3" step="0.5" value="1" oninput="updateVisuals()"></div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase border-b border-slate-200 pb-2">កញ្ចក់ & ពណ៌</h4>
+                    <div><label class="text-[10px] font-bold text-slate-500">Overlay <span id="opacityVal" class="float-right text-[var(--accent-color)]">30%</span></label><input type="range" id="bgOpacity" min="0" max="95" value="30" oninput="updateVisuals()"></div>
+                    <div><label class="text-[10px] font-bold text-slate-500">Blur <span id="blurVal" class="float-right text-[var(--accent-color)]">15px</span></label><input type="range" id="bgBlur" min="0" max="40" value="15" oninput="updateVisuals()"></div>
+                </div>
+                <div><label class="block text-[10px] font-bold uppercase text-slate-400 mb-2">Saved Gallery</label><div id="galleryGrid" class="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto p-1"></div></div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <button onclick="saveAndCloseSettings()" class="w-full py-3.5 bg-[var(--accent-color)] text-white rounded-xl font-bold shadow-lg active:scale-95 transition">រក្សាទុក (Save)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🏆 HEADER 🏆 -->
+    <div id="app-container" class="w-full max-w-lg space-y-8 pb-10 relative mt-24">
+        <div class="text-center mb-10 transition-all duration-700">
+            <div class="inline-flex p-6 bg-white/10 rounded-full shadow-2xl mb-4 border border-white/20 backdrop-blur-md animate-bounce-slow">
+                <span class="text-7xl drop-shadow-2xl" id="headerIcon">🎄</span>
+            </div>
+            <h1 class="text-4xl font-black text-white drop-shadow-2xl tracking-wide" id="appTitle">ប្រព័ន្ធស្រង់វត្តមាន</h1>
+            <div class="mt-3 inline-flex px-5 py-1 rounded-full bg-black/30 backdrop-blur-md border border-white/10">
+                <p class="text-[10px] font-bold text-white/90 uppercase tracking-[0.3em]">NP Attendance Pro</p>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="hidden fixed inset-0 z-[1000] flex items-center justify-center flex-col text-white bg-black/80 backdrop-blur-sm">
+            <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i><p class="font-bold">CONNECTING...</p>
+        </div>
+
+        <!-- 1. INPUT CARD -->
+        <div class="glass-card p-6 space-y-7">
+            <!-- Session -->
+            <div>
+                <label class="block text-xs font-bold uppercase mb-3 ml-1 text-white drop-shadow-md border-l-4 border-[var(--accent-color)] pl-2">ជ្រើសរើសពេល</label>
+                <div class="bg-white/50 p-2 rounded-xl backdrop-blur-sm">
+                    <div class="grid grid-cols-3 gap-2">
+                        <label><input type="radio" name="session" value="ពេលព្រឹក" class="hidden radio-hidden" checked onchange="updateReportText()"><div class="radio-card text-xs font-bold">🌅 ព្រឹក</div></label>
+                        <label><input type="radio" name="session" value="ពេលរសៀល" class="hidden radio-hidden" onchange="updateReportText()"><div class="radio-card text-xs font-bold">☀️ រសៀល</div></label>
+                        <label><input type="radio" name="session" value="ពេលយប់" class="hidden radio-hidden" onchange="updateReportText()"><div class="radio-card text-xs font-bold">🌙 យប់</div></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team -->
+            <div>
+                <label class="block text-xs font-bold uppercase mb-3 ml-1 text-white drop-shadow-md border-l-4 border-[var(--accent-color)] pl-2">ក្រុមការងារ</label>
+                <div class="relative group">
+                    <input list="teamList" id="teamName" onchange="autoFill()" class="input-field pl-12 shadow-lg" placeholder="ជ្រើសរើសក្រុម...">
+                    <div class="absolute left-4 top-4 w-8 h-8 flex items-center justify-center text-slate-400 group-focus-within:text-[var(--accent-color)] transition"><i class="fas fa-users text-xl"></i></div>
+                </div>
+                <datalist id="teamList"></datalist>
+                <label class="mt-4 cursor-pointer block select-none group">
+                    <input type="checkbox" id="isKitchen" class="hidden" onchange="toggleKitchenMode()">
+                    <div id="kitchenBtn" class="flex items-center justify-center gap-3 p-4 rounded-xl bg-white/60 border border-white/40 transition-all active:scale-95 shadow-sm hover:shadow-md">
+                        <span class="text-2xl group-hover:rotate-12 transition">🍳</span><span class="text-sm font-bold text-slate-700">ប៉ះវេនចុងភៅ</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Stats -->
+            <div id="detailSection" class="space-y-6 transition-all duration-300">
+                <div class="text-center">
+                    <label class="block text-xs font-bold uppercase mb-2 text-white drop-shadow-md">ចំនួនសមាជិក</label>
+                    <div class="flex justify-center"><input type="number" inputmode="numeric" id="memberCount" class="input-field text-center font-black text-4xl h-20 w-40 tracking-widest text-slate-700 bg-white/90" placeholder="0"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <label><input type="radio" name="attStatus" value="គ្រប់" class="hidden radio-hidden" checked onclick="toggleSection('absentBox', false)"><div class="radio-card success"><i class="fas fa-check-circle status-icon"></i><span class="text-sm font-bold">គ្រប់</span></div></label>
+                    <label><input type="radio" name="attStatus" value="មិនគ្រប់" class="hidden radio-hidden" onclick="toggleSection('absentBox', true)"><div class="radio-card danger"><i class="fas fa-times-circle status-icon"></i><span class="text-sm font-bold">មិនគ្រប់</span></div></label>
+                </div>
+                <div id="absentBox" class="hidden space-y-3 bg-white/60 p-4 rounded-xl border border-red-200 backdrop-blur-md">
+                    <div id="absentRows" class="space-y-2"></div>
+                    <button onclick="addAbsentRow()" class="w-full py-3 bg-white rounded-xl text-red-500 font-bold text-xs border border-red-100 hover:bg-red-50 flex items-center justify-center gap-2 active:scale-95 transition shadow-sm"><i class="fas fa-plus"></i> បន្ថែមឈ្មោះ</button>
+                    <datalist id="reasonList"></datalist>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <label><input type="radio" name="diStatus" value="នៅកន្លែងទាំងអស់" class="hidden radio-hidden" checked onclick="toggleSection('diBox', false)"><div class="radio-card info"><i class="fas fa-building status-icon"></i><span class="text-sm font-bold">នៅកន្លែង</span></div></label>
+                    <label><input type="radio" name="diStatus" value="មិននៅកន្លែង" class="hidden radio-hidden" onclick="toggleSection('diBox', true)"><div class="radio-card warning"><i class="fas fa-walking status-icon"></i><span class="text-sm font-bold">មិននៅ</span></div></label>
+                </div>
+                <div id="diBox" class="hidden space-y-3 bg-white/60 p-4 rounded-xl border border-blue-200 backdrop-blur-md">
+                    <div id="diRows" class="space-y-2"></div>
+                    <button onclick="addDiRow()" class="w-full py-3 bg-white rounded-xl text-blue-500 font-bold text-xs border border-blue-100 hover:bg-blue-50 flex items-center justify-center gap-2 active:scale-95 transition shadow-sm"><i class="fas fa-plus"></i> បន្ថែមឈ្មោះ</button>
+                </div>
+            </div>
+
+            <button onclick="addToQueue()" class="w-full py-5 rounded-2xl btn-action font-bold text-lg flex items-center justify-center gap-3 mt-6 shadow-xl"><i class="fas fa-folder-plus text-xl"></i> <span>បញ្ចូលទៅក្នុងបញ្ជី</span></button>
+        </div>
+
+        <!-- 2. QUEUE -->
+        <div id="queueSection" class="hidden space-y-4">
+            <div class="flex justify-between items-end px-3">
+                <h3 class="font-black text-white uppercase text-xs tracking-widest bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-md">បញ្ជីត្រៀមផ្ញើ (<span id="qCount">0</span>)</h3>
+                <button onclick="clearAll()" class="text-white text-xs font-bold bg-white/10 px-4 py-2 rounded-lg backdrop-blur-md border border-white/20 hover:bg-red-500/80">លុបទាំងអស់</button>
+            </div>
+            <div id="queueContainer" class="space-y-3"></div>
+            <div class="glass-card p-6">
+                <h3 class="text-center font-extrabold opacity-90 mb-6 flex items-center justify-center gap-2 text-white drop-shadow-md"><i class="fas fa-paper-plane"></i> ការកំណត់ & ផ្ញើ</h3>
+                <div class="space-y-4 mb-6">
+                    <div class="flex gap-2">
+                        <div class="relative w-full"><i class="fab fa-telegram absolute left-4 top-4 opacity-50 text-xl text-slate-500"></i><input type="text" id="chatId" class="w-full pl-12 pr-4 py-4 bg-white/90 border border-slate-200 rounded-2xl font-bold outline-none focus:bg-white transition shadow-inner text-slate-700" placeholder="Chat ID"></div>
+                        <button onclick="saveChatId()" class="bg-white/90 border border-slate-200 text-slate-600 w-16 rounded-2xl hover:text-[var(--accent-color)] transition shadow-sm text-xl active:scale-95"><i class="fas fa-save"></i></button>
+                    </div>
+                    <button onclick="setOwnerId()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 font-bold text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-crown"></i> ផ្ញើទៅ Owner NP</button>
+                </div>
+                
+                <!-- NEW PHOTO UPLOAD SECTION (BOTTOM) -->
+                <div class="mb-6 bg-white/60 p-5 rounded-2xl border-2 border-dashed border-white/60 hover:border-[var(--accent-color)] transition cursor-pointer relative overflow-hidden group shadow-sm">
+                    <input type="file" id="evidencePhotos" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handlePhotoSelect(this)">
+                    <div class="text-center group-hover:scale-105 transition duration-300">
+                        <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--accent-color)] group-hover:text-white transition shadow-md"><i class="fas fa-cloud-upload-alt text-2xl text-slate-400 group-hover:text-white"></i></div>
+                        <div class="text-sm font-bold text-slate-700">ចុចដើម្បីដាក់រូបភាព</div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-medium">អាចបញ្ចូលបានច្រើនរូប (Total Upload)</div>
+                    </div>
+                    <!-- Photo Preview Grid -->
+                    <div id="photoPreview" class="grid grid-cols-4 gap-2 mt-4 relative z-20"></div>
+                </div>
+
+                <button id="sendBtn" onclick="sendToTelegram()" class="w-full btn-action py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3"><i class="fas fa-paper-plane"></i> ផ្ញើរបាយការណ៍</button>
+                <div id="statusLog" class="mt-4 text-center text-xs font-bold text-green-600 min-h-[20px] whitespace-pre-line bg-green-100 rounded-lg py-3 hidden border border-green-200"></div>
+                <textarea id="finalReport" class="hidden"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📜 JS LOGIC 📜 -->
+    <script>
+        // 👉 LINK របស់ GOOGLE APPS SCRIPT (ដាក់ Link របស់អ្នកនៅទីនេះ)
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwskTYy7rYnbk1PglFJZH70zU-wNNyQ15cz1xH_iXmXN4cr5OYbCnpit04RzOwvbgwG/exec"; 
+
+        // --- 🎨 RELIABLE 3D ASSETS (GitHub Raw) ---
+        const IMAGES = {
+            santa: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/People%20with%20activities/Santa%20Claus.png",
+            bat: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Bat.png",
+            fish1: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Tropical%20Fish.png",
+            fish2: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Blowfish.png",
+            fish3: "https://media.githubusercontent.com/media/microsoft/fluentui-emoji-animated/refs/heads/main/assets/Jellyfish/animated/jellyfish_animated.png",
+            jelly: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Octopus.png",
+            turtle: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Turtle.png",
+            crab: "https://media.githubusercontent.com/media/microsoft/fluentui-emoji-animated/refs/heads/main/assets/Fish/animated/fish_animated.png",
+            leaf1: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Natural/Maple%20Leaf.png",
+            leaf2: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Natural/Fallen%20Leaf.png",
+            flower: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Cherry%20Blossom.png"
+        };
+
+        // --- 🎨 THEME CONFIG ---
+        const themes = {
+            christmas: { id: 'christmas', icon: '🎄', title: 'Christmas', bg: 'radial-gradient(circle at top, #b31217, #1a4c28)', accent: '#eab308', font: "'Mountains of Christmas', cursive", fx: 'snow', lightning: false, card: { overlay: 'rgba(255,255,255,0.9)', image: 'https://images.unsplash.com/photo-1544077960-604201fe74bc?auto=format&fit=crop&w=600&q=60', border: '1px solid rgba(255,255,255,0.6)' } },
+            undersea: { id: 'undersea', icon: '🐬', title: 'Under Sea', bg: 'linear-gradient(to bottom, #001e3c, #006064)', accent: '#00e5ff', font: "'Kantumruy Pro', sans-serif", fx: 'sea', lightning: false, card: { overlay: 'rgba(224, 247, 250, 0.85)', image: 'https://images.unsplash.com/photo-1582967788606-a171f1080cae?auto=format&fit=crop&w=600&q=60', border: '1px solid rgba(0, 229, 255, 0.4)' } },
+            spring: { id: 'spring', icon: '🌸', title: 'Spring', bg: 'linear-gradient(135deg, #f472b6, #86efac)', accent: '#db2777', font: "'Indie Flower', cursive", fx: 'flower', lightning: false, card: { overlay: 'rgba(255,255,255,0.85)', image: 'https://images.unsplash.com/photo-1490750967868-58cb75065ed4?auto=format&fit=crop&w=600&q=60', border: '1px solid rgba(236,72,153,0.4)' } },
+            rain: { id: 'rain', icon: '⛈️', title: 'Storm', bg: 'linear-gradient(to bottom, #1e293b, #0f172a)', accent: '#0ea5e9', font: "'Poppins', sans-serif", fx: 'rain', lightning: true, lightningColor: '255, 255, 255', card: { overlay: 'rgba(30,41,59,0.85)', image: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=600&q=60', border: '1px solid rgba(56,189,248,0.3)' } }
+        };
+
+        const themeKeys = Object.keys(themes);
+        let currentThemeIndex = 0, currentTheme = themeKeys[0];
+        let allTeams=[], absentReasons=[], queue=[], selectedFiles=[];
+        const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+
+        // --- 🎨 FX ENGINE CLASS ---
+        class CanvasManager {
+            constructor() {
+                this.canvas = document.getElementById('effect-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.animationId = null;
+                this.activeType = null;
+                this.userSpeed = 1;
+                this.userCount = 1;
+                window.addEventListener('resize', () => { this.width = this.canvas.width = window.innerWidth; this.height = this.canvas.height = window.innerHeight; });
+                this.width = this.canvas.width = window.innerWidth; this.height = this.canvas.height = window.innerHeight;
+            }
+            clear() { cancelAnimationFrame(this.animationId); this.particles = []; this.ctx.clearRect(0, 0, this.width, this.height); this.activeType = null; }
+            start(type, speed, count) {
+                this.clear(); this.activeType = type; this.userSpeed = speed; this.userCount = count;
+                if (!['rain', 'snow', 'sea'].includes(type)) return;
+                const baseCount = type === 'rain' ? 100 : (type === 'sea' ? 40 : 50);
+                const total = Math.floor(baseCount * count);
+                for (let i = 0; i < total; i++) { this.particles.push(this.createParticle(type)); }
+                this.animate();
+            }
+            createParticle(type) {
+                const isSea = type === 'sea'; const isSnow = type === 'snow';
+                return {
+                    x: Math.random() * this.width, y: isSea ? this.height + Math.random() * 100 : Math.random() * -this.height,
+                    vx: isSnow ? Math.random() * 2 - 1 : (isSea ? Math.random() * 0.5 - 0.25 : 0),
+                    vy: isSea ? -(Math.random() * 1.5 + 0.5) : (type === 'rain' ? Math.random() * 15 + 10 : Math.random() * 2 + 1),
+                    size: type === 'rain' ? Math.random() * 20 + 10 : Math.random() * 15 + 10,
+                    opacity: Math.random() * 0.5 + 0.3, type: type, shape: isSnow ? ['❄','❅','❆','•'][Math.floor(Math.random()*4)] : null
+                };
+            }
+            animate() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                const theme = themes[currentTheme];
+                if (theme.lightning && Math.random() > 0.99) {
+                    if (Math.random() > 0.7) { 
+                        const flash = document.getElementById('lightning-flash');
+                        flash.style.backgroundColor = `rgba(${theme.lightningColor}, 0.6)`;
+                        flash.style.opacity = 0.6; setTimeout(() => flash.style.opacity = 0, 80);
+                    }
+                    if (Math.random() > 0.6) this.drawLightning(theme.lightningColor);
+                }
+                this.particles.forEach(p => {
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                    this.ctx.beginPath();
+                    if (p.type === 'rain') { this.ctx.fillRect(p.x, p.y, 1.5, p.size); } 
+                    else if (p.type === 'snow') { this.ctx.font = `${p.size}px Arial`; this.ctx.fillText(p.shape, p.x, p.y); } 
+                    else { this.ctx.arc(p.x, p.y, p.size / 4, 0, Math.PI * 2); this.ctx.fill(); }
+                    p.y += p.vy * (p.type==='sea' ? 1 : this.userSpeed); p.x += p.vx * this.userSpeed;
+                    if (p.type === 'sea') { if (p.y < -10) { p.y = this.height + 10; p.x = Math.random() * this.width; } } 
+                    else { if (p.y > this.height) { p.y = -20; p.x = Math.random() * this.width; } }
+                });
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+            drawLightning(color) {
+                let x = Math.random() * this.width; let y = 0; this.ctx.beginPath(); this.ctx.moveTo(x, y);
+                this.ctx.strokeStyle = `rgba(${color}, 0.9)`; this.ctx.lineWidth = 3; this.ctx.shadowBlur = 20; this.ctx.shadowColor = `rgba(${color}, 1)`;
+                while (y < this.height) { x += (Math.random() - 0.5) * 80; y += Math.random() * 40; this.ctx.lineTo(x, y); if (Math.random() > 0.9) { this.ctx.moveTo(x, y); this.ctx.lineTo(x + (Math.random()-0.5)*50, y + 50); this.ctx.moveTo(x, y); } }
+                this.ctx.stroke(); this.ctx.shadowBlur = 0;
+            }
+        }
+
+        const fxEngine = new CanvasManager();
+        let spriteInterval = null;
+
+        function startSprites(type, speed, count) {
+            clearInterval(spriteInterval);
+            document.getElementById('sprite-container').innerHTML = ''; 
+            
+            if (!['bat', 'leaf', 'flower', 'sea'].includes(type)) return;
+
+            const spawn = () => {
+                const el = document.createElement('div');
+                el.className = 'sprite';
+                el.style.filter = "drop-shadow(0 4px 4px rgba(0,0,0,0.3))";
+
+                const img = document.createElement('img');
+                img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain';
+
+                if (type === 'bat') {
+                    img.src = IMAGES.bat;
+                    img.className = 'bat-anim';
+                    el.appendChild(img);
+                    el.style.width = (Math.random() * 60 + 40) + 'px';
+                    el.style.left = '-10vw'; el.style.top = (Math.random() * 50 + 20) + 'vh';
+                    const dur = (Math.random() * 3000 + 4000) / speed;
+                    el.animate([{ transform: 'translateX(0) scale(0.6)' }, { transform: `translateX(${window.innerWidth + 100}px) translateY(${Math.random() * 200 - 100}px) scale(0.8)` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
+                } 
+                else if (type === 'sea') {
+                    const creatures = [IMAGES.fish1, IMAGES.fish2, IMAGES.fish3, IMAGES.turtle, IMAGES.crab, IMAGES.jelly];
+                    const imgUrl = creatures[Math.floor(Math.random()*creatures.length)];
+                    img.src = imgUrl;
+                    
+                    if(imgUrl.includes('jelly')) img.className = 'jelly-anim';
+                    else img.className = 'fish-anim';
+                    
+                    el.appendChild(img);
+                    el.style.width = (Math.random()*60+40)+'px';
+                    el.style.top = Math.random() * 90 + 'vh';
+                    
+                    const direction = Math.random() > 0.5 ? 1 : -1;
+                    const startX = direction === 1 ? -100 : window.innerWidth + 100;
+                    const endX = direction === 1 ? window.innerWidth + 100 : -100;
+                    const scaleX = direction === 1 ? -1 : 1; 
+                    
+                    el.style.left = startX + 'px';
+                    const dur = (Math.random() * 8000 + 10000) / speed;
+                    el.animate([{ transform: `translateX(0) scaleX(${scaleX})` }, { transform: `translateX(${endX - startX}px) scaleX(${scaleX})` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
+                }
+                else {
+                    const imgUrl = type === 'leaf' ? (Math.random() > 0.5 ? IMAGES.leaf1 : IMAGES.leaf2) : IMAGES.flower;
+                    img.src = imgUrl;
+                    img.className = 'leaf-anim';
+                    el.appendChild(img);
+                    
+                    el.style.width = type === 'leaf' ? (Math.random()*30+20)+'px' : '25px';
+                    el.style.left = Math.random()*100+'vw'; el.style.top = '-50px';
+                    const dur = (Math.random() * 4000 + 4000) / speed;
+                    el.animate([{ transform: 'translateY(0) rotate(0deg)' }, { transform: `translateY(${window.innerHeight + 100}px) rotate(360deg)` }], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
+                }
+                
+                document.getElementById('sprite-container').appendChild(el);
+            };
+            
+            const baseInt = (type === 'bat' || type === 'sea') ? 2000 : 800;
+            spawn();
+            spriteInterval = setInterval(spawn, baseInt / count);
+        }
+
+        // --- HISTORY LOGIC ---
+        function toggleHistory() {
+            const modal = document.getElementById('historyModal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                renderHistory();
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function addToHistory(record) {
+            let history = JSON.parse(localStorage.getItem('np_history')) || [];
+            history.unshift(record);
+            if (history.length > 50) history.pop(); // Keep last 50
+            localStorage.setItem('np_history', JSON.stringify(history));
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('np_history')) || [];
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400 py-10">មិនទាន់មានប្រវត្តិ</div>';
+                return;
+            }
+
+            history.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "history-card bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm relative";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${item.timestamp}</span>
+                        <button onclick="copyHistory('${item.fullText.replace(/\n/g, '\\n')}')" class="text-slate-400 hover:text-[var(--accent-color)]"><i class="far fa-copy"></i></button>
+                    </div>
+                    <div class="font-bold text-slate-700 text-sm mb-1">${item.summary}</div>
+                    <div class="text-[10px] text-slate-500 line-clamp-2">${item.fullText}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function clearHistory() {
+            if(confirm("លុបប្រវត្តិទាំងអស់?")) {
+                localStorage.removeItem('np_history');
+                renderHistory();
+            }
+        }
+
+        function copyHistory(text) {
+            navigator.clipboard.writeText(text).then(() => alert("បានចម្លង!"));
+        }
+
+        // --- THEME LOGIC ---
+        window.onload = function() { 
+            const savedTheme = localStorage.getItem('np_current_theme') || 'christmas';
+            if(themes[savedTheme]) {
+                currentTheme = savedTheme;
+                currentThemeIndex = themeKeys.indexOf(savedTheme);
+            }
+            setTheme(currentTheme); 
+            loadData(); 
+        };
+
+        function changeTheme(step) {
+            currentThemeIndex = (currentThemeIndex + step + themeKeys.length) % themeKeys.length;
+            currentTheme = themeKeys[currentThemeIndex];
+            localStorage.setItem('np_current_theme', currentTheme);
+            setTheme(currentTheme);
+        }
+
+        function toggleSettings() { document.getElementById('settingsModal').classList.toggle('hidden'); }
+
+        function setTheme(themeId) {
+            currentTheme = themeId;
+            const theme = themes[themeId];
+            const root = document.documentElement.style;
+            root.setProperty('--bg-gradient', theme.bg);
+            root.setProperty('--accent-color', theme.accent);
+            root.setProperty('--font-family', theme.font);
+            const settings = JSON.parse(localStorage.getItem(`np_settings_${themeId}`)) || { bgUrl: '', opacity: 30, blur: 20, speed: 1, count: 1 };
+            userSpeed = parseFloat(settings.speed); userQuantity = parseFloat(settings.count);
+            const imageUrl = settings.bgUrl || theme.card.image;
+            const baseColor = ['rain','undersea'].includes(themeId) ? '0,0,0' : '255,255,255';
+            const overlayAlpha = settings.opacity / 100;
+            root.setProperty('--card-bg-image', `linear-gradient(rgba(${baseColor},${overlayAlpha}), rgba(${baseColor},${overlayAlpha})), url('${imageUrl}')`);
+            root.setProperty('--card-blur', settings.blur + 'px');
+            root.setProperty('--card-border', theme.card.border);
+            document.getElementById('topModeName').innerText = theme.title;
+            document.getElementById('topModeIcon').innerText = theme.icon;
+            document.getElementById('currentModeName').innerText = theme.title;
+            document.getElementById('headerIcon').innerText = theme.icon;
+            document.getElementById('appTitle').style.fontFamily = theme.font;
+            if(['rain','undersea'].includes(themeId)) {
+                root.setProperty('--text-color', '#f8fafc'); 
+                root.setProperty('--input-text', '#f1f5f9'); 
+                root.setProperty('--input-bg', 'rgba(255,255,255,0.1)');
+            } else {
+                root.setProperty('--text-color', '#fff'); 
+                root.setProperty('--input-text', '#0f172a');
+                root.setProperty('--input-bg', 'rgba(255,255,255,0.9)');
+            }
+            const overlay = document.getElementById('atmosphere-overlay');
+            overlay.style.background = 'none';
+            document.getElementById('lightning-flash').style.opacity = 0;
+            if (theme.fx === 'rain') overlay.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)';
+            if (theme.fx === 'bat') overlay.style.background = 'radial-gradient(circle at 50% 100%, rgba(255,165,0,0.1), transparent 60%)'; 
+            if (theme.fx === 'sea') overlay.style.background = 'radial-gradient(circle at 50% 0, rgba(255,255,255,0.2), transparent 60%)'; 
+            updateSettingsUI(settings);
+            renderGallery();
+            fxEngine.start(theme.fx, settings.speed, settings.count);
+            startSprites(theme.fx, settings.speed, settings.count);
+        }
+
+        function updateVisuals() {
+            const s = { 
+                bgUrl: document.getElementById('customBgUrl').value, 
+                opacity: document.getElementById('bgOpacity').value, 
+                blur: document.getElementById('bgBlur').value,
+                speed: document.getElementById('fxSpeed').value,
+                count: document.getElementById('fxCount').value
+            };
+            document.getElementById('opacityVal').innerText = s.opacity+'%'; 
+            document.getElementById('blurVal').innerText = s.blur+'px';
+            document.getElementById('speedVal').innerText = s.speed+'x';
+            document.getElementById('countVal').innerText = s.count+'x';
+            localStorage.setItem(`np_settings_${currentTheme}`, JSON.stringify(s));
+            setTheme(currentTheme);
+        }
+        function handleCustomBgInput() { updateVisuals(); }
+        function handlePhotoSelect(input) {
+            const files = Array.from(input.files);
+            if(files.length === 0) return;
+            selectedFiles = selectedFiles.concat(files);
+            renderPhotoPreviews();
+        }
+
+        function renderPhotoPreviews() {
+            const container = document.getElementById('photoPreview');
+            container.innerHTML = '';
+            selectedFiles.forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const d = document.createElement('div');
+                    d.className = "relative h-20 w-full rounded-lg overflow-hidden group shadow-md border border-slate-200";
+                    d.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-full object-cover">
+                        <button onclick="removePhoto(${idx})" class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow-md opacity-80 hover:opacity-100 hover:scale-110 transition"><i class="fas fa-times"></i></button>
+                    `;
+                    container.appendChild(d);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removePhoto(index) {
+            selectedFiles.splice(index, 1);
+            renderPhotoPreviews();
+            document.getElementById('evidencePhotos').value = '';
+        }
+
+        function addToGallery() {
+            const url = document.getElementById('customBgUrl').value.trim();
+            if(!url) return;
+            const key = `np_gallery_${currentTheme}`;
+            let gal = JSON.parse(localStorage.getItem(key)) || [];
+            if(!gal.includes(url)) { gal.unshift(url); localStorage.setItem(key, JSON.stringify(gal)); renderGallery(); updateVisuals(false); }
+        }
+        function renderGallery() {
+            const gal = JSON.parse(localStorage.getItem(`np_gallery_${currentTheme}`)) || [];
+            const con = document.getElementById('galleryGrid');
+            con.innerHTML = gal.length ? '' : '<div class="col-span-3 text-center text-xs text-slate-400 py-4">No images</div>';
+            gal.forEach(url => {
+                const d = document.createElement('div');
+                d.className = `gallery-item ${url === document.getElementById('customBgUrl').value ? 'active' : ''}`;
+                d.onclick = () => { document.getElementById('customBgUrl').value = url; updateVisuals(); };
+                d.innerHTML = `<img src="${url}" class="w-full h-full object-cover"><button onclick="event.stopPropagation(); deleteImg('${url}')" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white flex items-center justify-center rounded-full text-[10px]"><i class="fas fa-times"></i></button>`;
+                con.appendChild(d);
+            });
+        }
+        function deleteImg(url) {
+            const key = `np_gallery_${currentTheme}`;
+            let gal = JSON.parse(localStorage.getItem(key)).filter(i => i !== url);
+            localStorage.setItem(key, JSON.stringify(gal));
+            if(document.getElementById('customBgUrl').value === url) { document.getElementById('customBgUrl').value = ''; updateVisuals(false); }
+            renderGallery();
+        }
+        function saveAndCloseSettings() { const url = document.getElementById('customBgUrl').value.trim(); if(url) addToGallery(); toggleSettings(); }
+        function updateSettingsUI(s) {
+            document.getElementById('customBgUrl').value = s.bgUrl || '';
+            document.getElementById('bgOpacity').value = s.opacity; document.getElementById('opacityVal').innerText = s.opacity+'%';
+            document.getElementById('bgBlur').value = s.blur; document.getElementById('blurVal').innerText = s.blur+'px';
+            document.getElementById('fxSpeed').value = s.speed || 1; document.getElementById('speedVal').innerText = (s.speed || 1)+'x';
+            document.getElementById('fxCount').value = s.count || 1; document.getElementById('countVal').innerText = (s.count || 1)+'x';
+        }
+
+        async function loadData() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            const isLocal = !GAS_URL || GAS_URL.includes("example");
+            try {
+                if(isLocal) { await new Promise(r => setTimeout(r, 800)); allTeams = [["ក្រុម A", 5], ["ក្រុម B", 10]]; absentReasons = ["ច្បាប់", "ឈឺ"]; }
+                else { const t = await fetch(GAS_URL + "?action=getTeams"); allTeams = await t.json(); const r = await fetch(GAS_URL + "?action=getReasons"); absentReasons = await r.json(); }
+                updateTeamDropdown(); populateReasonDatalist();
+            } catch(e) { alert("Error: "+e); } finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
+        }
+
+        function updateTeamDropdown(){const dl=document.getElementById('teamList');dl.innerHTML='';const queuedNames=queue.map(q=>q.teamName);allTeams.filter(t=>!queuedNames.includes(t[0])).forEach(r=>{let op=document.createElement('option');op.value=r[0];dl.appendChild(op)})}
+        function populateReasonDatalist(){const dl=document.getElementById('reasonList');dl.innerHTML='';absentReasons.forEach(r=>{let op=document.createElement('option');op.value=r;dl.appendChild(op)})}
+        function autoFill(){const val=document.getElementById('teamName').value;const found=allTeams.find(r=>r[0]==val);if(found)document.getElementById('memberCount').value=found[1]}
+        function saveChatId(){const id=document.getElementById('chatId').value;if(id){localStorage.setItem('np_chat_id',id);alert("Saved!")}}
+        function setOwnerId(){document.getElementById('chatId').value="1259379225";saveChatId()}
+        function toggleKitchenMode(){const isK=document.getElementById('isKitchen').checked;const sec=document.getElementById('detailSection');const btn=document.getElementById('kitchenBtn');if(isK){sec.classList.add('opacity-50','pointer-events-none');btn.classList.add('bg-orange-100','border-orange-400')}else{sec.classList.remove('opacity-50','pointer-events-none');btn.classList.remove('bg-orange-100','border-orange-400')}}
+        function toggleSection(id,show){const el=document.getElementById(id);if(show){el.classList.remove('hidden');if(el.children[0].children.length==0)id=='absentBox'?addAbsentRow():addDiRow()}else{el.classList.add('hidden');el.children[0].innerHTML=''}}
+        function addAbsentRow(){const div=document.createElement('div');div.className="flex gap-2 animate-[fadeIn_0.3s]";div.innerHTML=`<input class="w-1/2 input-field text-sm" placeholder="ឈ្មោះ"><input list="reasonList" class="w-1/2 input-field text-sm" placeholder="មូលហេតុ"><button onclick="this.parentElement.remove()" class="w-10 bg-white rounded-lg text-red-500 shadow-sm"><i class="fas fa-trash"></i></button>`;document.getElementById('absentRows').appendChild(div)}
+        function addDiRow(){const div=document.createElement('div');div.className="flex gap-2 animate-[fadeIn_0.3s]";div.innerHTML=`<input class="w-full input-field text-sm" placeholder="ឈ្មោះ"><button onclick="this.parentElement.remove()" class="w-10 bg-white rounded-lg text-blue-500 shadow-sm"><i class="fas fa-trash"></i></button>`;document.getElementById('diRows').appendChild(div)}
+        function addToQueue(){const name=document.getElementById('teamName').value;if(!name)return alert("Please enter team name");let newItem={};if(document.getElementById('isKitchen').checked){newItem={teamName:name,isKitchen:true}}else{const count=parseInt(document.getElementById('memberCount').value||0);if(!count)return alert("Please enter count");const att=document.querySelector('input[name="attStatus"]:checked').value;const di=document.querySelector('input[name="diStatus"]:checked').value;let abs=[];if(att=="មិនគ្រប់")document.querySelectorAll('#absentRows > div').forEach(row=>{if(row.children[0].value)abs.push({name:row.children[0].value,reason:row.children[1].value})});let offs=[];if(di=="មិននៅកន្លែង")document.querySelectorAll('#diRows > div').forEach(row=>{if(row.children[0].value)offs.push({name:row.children[0].value})});newItem={teamName:name,isKitchen:false,memberCount:count,attendanceStatus:att,absentees:abs,diStatus:di,offsites:offs}}queue.push(newItem);resetForm();renderQueue();updateReportText()}
+        function resetForm(){document.getElementById('teamName').value='';document.getElementById('isKitchen').checked=false;toggleKitchenMode();document.getElementById('memberCount').value='';document.querySelector('input[name="attStatus"][value="គ្រប់"]').click();document.querySelector('input[name="diStatus"][value="នៅកន្លែងទាំងអស់"]').click();updateTeamDropdown()}
+        function renderQueue(){const cont=document.getElementById('queueContainer');const sec=document.getElementById('queueSection');document.getElementById('qCount').innerText=queue.length;if(queue.length==0){sec.classList.add('hidden');return}sec.classList.remove('hidden');cont.innerHTML='';queue.forEach((item,idx)=>{const div=document.createElement('div');div.className="bg-white/90 p-3 rounded-xl shadow-sm flex justify-between items-center";const info=item.isKitchen?`<span class="font-bold text-slate-800">${item.teamName} <span class="text-[10px] bg-orange-100 text-orange-600 px-2 rounded">Kitchen</span></span>`:`<span class="font-bold text-slate-800">${item.teamName} <span class="text-xs text-slate-500">(${item.memberCount})</span></span>`;div.innerHTML=`${info}<button onclick="removeQ(${idx})" class="text-red-500"><i class="fas fa-trash"></i></button>`;cont.appendChild(div)})}
+        function removeQ(idx){queue.splice(idx,1);renderQueue();updateReportText();updateTeamDropdown()}
+        function clearAll(){if(confirm("Delete All?")){queue=[];renderQueue();updateReportText()}}
+        
+        function updateReportText(){const d=new Date();const khDate=`ថ្ងៃទី${d.getDate()} ខែ${khmerMonths[d.getMonth()]} ឆ្នាំ${d.getFullYear()}`;const session=document.querySelector('input[name="session"]:checked')?.value||"ពេលព្រឹក";let txt=`> សូមរាយការណ៍ជូនលោកគ្រូ នេះជារបាយការណ៍ក្រុមការងារទូទៅ ${khDate} (${session})\n\n`;const kTeams=queue.filter(q=>q.isKitchen);const nTeams=queue.filter(q=>!q.isKitchen);if(kTeams.length>0)txt+=`+ ក្រុម ${kTeams.map(t=>t.teamName).join(", ")} (ប៉ះវេនចុងភៅ)\n\n`;nTeams.forEach(item=>{txt+=`+ ក្រុម ${item.teamName} សមាជិក ${item.memberCount} នាក់\n`;if(item.absentees.length>0){txt+=`   - អវត្តមាន ${item.absentees.length}\n`;item.absentees.forEach((ab,i)=>txt+=`     ${i+1}.${ab.name} (${ab.reason||'ផ្សេងៗ'})\n`)}let present=item.memberCount-item.absentees.length;let diTxt=item.offsites.length>0?`អត់នៅកន្លែង ${item.offsites.length} នាក់`:"នៅកន្លែងទាំងអស់";txt+=` (មក ${present} នាក់ ${diTxt})\n`;if(item.offsites.length>0){txt+=`   - អ្នកអត់នៅកន្លែង ${item.offsites.length} នាក់\n`;item.offsites.forEach((off,i)=>txt+=`     ${i+1}.${off.name}\n`)}txt+="\n"});txt+="សូមអរគុណ🙏 🙏";document.getElementById('finalReport').value=txt}
+
+        async function sendToTelegram() {
+            const id = document.getElementById('chatId').value;
+            const text = document.getElementById('finalReport').value;
+            if (!id) return alert("Please enter Chat ID");
+            if (queue.length === 0) return alert("Queue empty");
+            const btn = document.getElementById('sendBtn');
+            const oldHtml = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            try {
+                let images = [];
+                for(let file of selectedFiles) { images.push(await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); })); }
+                
+                // IMPORTANT: Send text as 'text' field (for caption in GAS)
+                // Note: Your GAS script must handle 'text' as caption for photos
+                await fetch(GAS_URL, { 
+                    method: "POST", 
+                    mode: "no-cors", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                        chatId: id, 
+                        text: text, // This will be the caption
+                        images: images 
+                    }) 
+                });
+
+                // SAVE TO HISTORY
+                const record = {
+                    timestamp: new Date().toLocaleString('km-KH'),
+                    summary: queue.map(q => q.teamName).join(', '),
+                    fullText: text
+                };
+                addToHistory(record);
+                
+                document.getElementById('statusLog').classList.remove('hidden');
+                document.getElementById('statusLog').innerText = "✅ Sent Successfully!";
+                setTimeout(() => document.getElementById('statusLog').classList.add('hidden'), 5000);
+                queue = []; renderQueue(); selectedFiles = []; document.getElementById('photoPreview').innerHTML='';
+            } catch (e) { alert("Error: " + e); } 
+            finally { btn.disabled = false; btn.innerHTML = oldHtml; }
+        }
+    </script>
+</body>
+</html>
