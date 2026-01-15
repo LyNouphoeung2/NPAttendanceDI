@@ -10,27 +10,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700&family=Poppins:wght@400;600;700&family=Mountains+of+Christmas:wght@700&family=Creepster&family=Indie+Flower&display=swap" rel="stylesheet">
     
     <style>
+        /* --- 🎨 SYSTEM VARIABLES --- */
         :root {
             --bg-gradient: radial-gradient(circle at top, #b31217, #8a0d11);
             --accent-color: #d42426;
             --text-color: #f8fafc;
             --font-family: 'Kantumruy Pro', sans-serif;
+            
+            /* Glass Card */
             --card-bg: rgba(255, 255, 255, 0.15);
             --card-border: 1px solid rgba(255, 255, 255, 0.3);
             --card-blur: 20px;
             --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             --card-bg-image: none; 
+
+            /* Inputs */
             --input-bg: rgba(255, 255, 255, 0.9);
             --input-text: #0f172a;
         }
 
         body { 
-            font-family: var(--font-family); background: var(--bg-gradient);
-            min-height: 100vh; color: var(--text-color); padding-bottom: 120px;
-            overflow-x: hidden; transition: background 1s ease; position: relative;
+            font-family: var(--font-family); 
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-color);
+            padding-bottom: 120px;
+            overflow-x: hidden;
+            transition: background 1s ease;
+            position: relative;
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* --- ⚡ LAYER SYSTEM ⚡ --- */
         #app-container { position: relative; z-index: 10; }
         #effect-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
         #sprite-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; overflow: hidden; }
@@ -39,8 +50,9 @@
 
         .top-nav { position: fixed; top: 0; left: 0; width: 100%; z-index: 50; padding: 1rem; pointer-events: none; display: flex; justify-content: space-between; align-items: center; }
         .top-nav > * { pointer-events: auto; } 
-        #settingsModal, #historyModal, #confirmModal { z-index: 100; }
+        #settingsModal, #historyModal, #confirmModal { z-index: 200; }
 
+        /* --- 💎 UI STYLES 💎 --- */
         .glass-card {
             background-image: var(--card-bg-image); background-size: cover; background-position: center;
             background-color: var(--card-bg); backdrop-filter: blur(var(--card-blur)); -webkit-backdrop-filter: blur(var(--card-blur));
@@ -67,6 +79,7 @@
         .info { color: #0284c7; } .radio-hidden:checked + .radio-card.info { border-color: #0284c7; color: #0284c7; }
         .warning { color: #d97706; } .radio-hidden:checked + .radio-card.warning { border-color: #d97706; color: #d97706; }
 
+        /* --- 🎞️ ANIMATIONS 🎞️ --- */
         .sprite { position: absolute; will-change: transform; pointer-events: none; background-size: contain; background-repeat: no-repeat; background-position: center; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
         
         .fish-anim { animation: fishWiggle 0.6s infinite alternate ease-in-out; }
@@ -128,8 +141,8 @@
         </div>
     </div>
 
-    <!-- ❓ CONFIRMATION MODAL ❓ -->
-    <div id="confirmModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 transition-all">
+    <!-- ❓ CONFIRMATION MODAL (NEW FIX) ❓ -->
+    <div id="confirmModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 transition-all" style="z-index: 200;">
         <div class="bg-white rounded-[28px] p-6 w-full max-w-xs shadow-2xl transform scale-100 transition-all">
             <div class="text-center mb-5">
                 <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-500 text-3xl">
@@ -273,19 +286,14 @@
                     </div>
                     <button onclick="setOwnerId()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 font-bold text-white shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-crown"></i> ផ្ញើទៅ Owner NP</button>
                 </div>
-                
-                <!-- NEW PHOTO UPLOAD SECTION (BOTTOM) -->
                 <div class="mb-6 bg-white/60 p-5 rounded-2xl border-2 border-dashed border-white/60 hover:border-[var(--accent-color)] transition cursor-pointer relative overflow-hidden group shadow-sm">
                     <input type="file" id="evidencePhotos" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handlePhotoSelect(this)">
                     <div class="text-center group-hover:scale-105 transition duration-300">
                         <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--accent-color)] group-hover:text-white transition shadow-md"><i class="fas fa-cloud-upload-alt text-2xl text-slate-400 group-hover:text-white"></i></div>
-                        <div class="text-sm font-bold text-slate-700">ចុចដើម្បីដាក់រូបភាព</div>
-                        <div class="text-[10px] text-slate-500 mt-1 font-medium">អាចបញ្ចូលបានច្រើនរូប (Total Upload)</div>
+                        <div class="text-sm font-bold text-slate-700">ចុចដើម្បីដាក់រូបភាព</div><div class="text-[10px] text-slate-500 mt-1 font-medium">អាចបញ្ចូលបានច្រើនរូប (Total Upload)</div>
                     </div>
-                    <!-- Photo Preview Grid -->
                     <div id="photoPreview" class="grid grid-cols-4 gap-2 mt-4 relative z-20"></div>
                 </div>
-
                 <button id="sendBtn" onclick="sendToTelegram()" class="w-full btn-action py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3"><i class="fas fa-paper-plane"></i> ផ្ញើរបាយការណ៍</button>
                 <div id="statusLog" class="mt-4 text-center text-xs font-bold text-green-600 min-h-[20px] whitespace-pre-line bg-green-100 rounded-lg py-3 hidden border border-green-200"></div>
                 <textarea id="finalReport" class="hidden"></textarea>
@@ -295,8 +303,6 @@
 
     <!-- 📜 JS LOGIC 📜 -->
     <script>
-        // 🔴 IMPORTANT: Replace this URL with your deployed Google Apps Script Web App URL
-        // MAKE SURE YOU RE-DEPLOY GAS AND SELECT "ANYONE" FOR ACCESS
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwskTYy7rYnbk1PglFJZH70zU-wNNyQ15cz1xH_iXmXN4cr5OYbCnpit04RzOwvbgwG/exec"; 
 
         // --- 🎨 RELIABLE 3D ASSETS (GitHub Raw) ---
@@ -680,7 +686,7 @@
             if(document.getElementById('customBgUrl').value === url) { document.getElementById('customBgUrl').value = ''; updateVisuals(false); }
             renderGallery();
         }
-        function saveAndCloseSettings() { toggleSettings(); }
+        function saveAndCloseSettings() { const url = document.getElementById('customBgUrl').value.trim(); if(url) addToGallery(); toggleSettings(); }
         function updateSettingsUI(s) {
             document.getElementById('customBgUrl').value = s.bgUrl || '';
             document.getElementById('bgOpacity').value = s.opacity; document.getElementById('opacityVal').innerText = s.opacity+'%';
